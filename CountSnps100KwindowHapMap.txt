@@ -1,0 +1,30 @@
+##Script to make a count the number of SNPs within a window size of 100K for HapMap Snps file of all 
+table_1<-read.delim(file = "UPDATED_HAPMAP_withX.txt", 
+                    sep= " ", strip.white=TRUE, fill = TRUE, header = F)
+table_1$V1<-sapply(table_1$V1, as.character)
+table_1<-table_1[nchar(table_1$V1)<=5,]
+chroms<-c('chr1','chr2','chr3','chr4','chr5','chr6','chr7','chr8',
+          'chr9','chr10','chr11','chr12','chr13','chr14','chr15',
+          'chr16','chr17','chr18','chr19','chr20','chr21', 'chr22', "chrX")
+table_of_interest<-c()
+for (i in 1:length(chroms))
+{
+  max_val<-max(ceiling(table_1$V2[table_1$V1==chroms[i]]/100000)*100000)
+  for (j in 1:(max_val/100000)){
+    start1<-(j-1)*100000
+    start2<-(j)*100000
+    table_of_interest<-rbind(table_of_interest, c(i, ((start1+start2)/2),
+                                                  sum(
+      (table_1$V2[table_1$V1==chroms[i]]>=start1) &
+        (table_1$V2[table_1$V1==chroms[i]]<=start2) )))
+  }
+  print(chroms[i])
+  print(max_val)
+}
+colnames(table_of_interest)<-c("Chrom", "position", "count")
+for (i in 1:length(table_of_interest[,1])){
+  cat(c(table_of_interest[i,1], table_of_interest[i,2],
+        table_of_interest[i,3], '\n'), sep='\t',
+      file='hapmap_count_X.txt', append = T)
+}
+

@@ -1,0 +1,41 @@
+# GWAS catalogue cleaning Script
+
+library(dplyr)
+library(tidyr)
+library(biomaRt)
+#import table
+gwas <- read.csv("gwas_catalog_v1.0.2-associations_e100_r2020-07-14.csv", header=TRUE)
+#remove dupllicates
+gwas2 <- gwas %>% distinct(SNP_ID_CURRENT, .keep_all = TRUE)
+#filter for significance
+gwas2 <- gwas2[gwas2$P.VALUE<=0.00000005,]
+#separate genes
+gwas3 <- gwas2 %>% separate(MAPPED_GENE,into = c("1","2","3","4","5","6","7"), c(", | - "))
+gwas3[gwas3==""] <- NA
+#remove duplicates within rows; too slow, needs optimization
+for(i in 1:nrow(gwas3)){
+  gwas3[i,14+which(duplicated(unlist(gwas3[i,15:21])))] <- NA
+}
+#remove all-NA columns
+gwas3 <- gwas3[, !apply(is.na(gwas3), 2, all)]
+#extract unique genes
+genelist <- unique(unlist(gwas3[,15:21]))
+#identify protein-coding genes
+ensembl = useMart("ensembl",dataset="hsapiens_gene_ensembl")
+prot_cod <- getBM(attributes = "external_gene_name", 
+                  filters=c("biotype", "entrezgene_accession"), 
+                  values=list(biotype="protein_coding", entrezgene_accession=genelist), 
+                  mart=ensembl)
+#remove rows with all non-protein-coding genes; also slow
+gwas4 <-gwas3[which(as.data.frame
+                    (apply(gwas3[,15:21], 1, 
+                           function(x) any(unlist(x) %in% unlist(prot_cod))))==TRUE),]
+#remove non-protein-coding genes from rows where protein-coding genes are also present
+gwas4[,15:21] <- replace(gwas4[,15:21], 
+                         !sapply(gwas4[,15:21], function(x)
+                           unlist(x) %in% unlist(prot_cod)), NA)
+#calculate frequency of protein coding genes in the dataset
+gene_freq<-table(unlist(gwas4[,15:21]), exclude = NA)
+
+write.csv(gwas4, "cleaned gwas catalogue.csv")
+write.csv(gene_freq, "gene frequency.csv")

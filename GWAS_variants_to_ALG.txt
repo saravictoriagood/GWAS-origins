@@ -1,0 +1,33 @@
+
+## Table to extract all unique SNPs from the GWAS catalogue with a p_value < 5 * 10-08 and assign them to their ALG
+
+table_1<-read.csv(file = " CLG_Map_locations_23-new.csv", strip.white=TRUE, fill = TRUE, header = TRUE)
+table_2<-read.delim(file = "gwas_catalog_v1.0.2-associations_e100_r2020-07-14.tsv", sep = "\t", strip.white=TRUE, fill = TRUE, header = TRUE)
+table_1$Final.Start38<-sapply(table_1$Final.Start38, function(x) as.numeric(as.character(x)))
+table_1$Final.Stop38<-sapply(table_1$Final.Stop38, function(x) as.numeric(as.character(x)))
+table_2$P.VALUE<-sapply(table_2$P.VALUE, function(x) as.numeric(as.character(x)))
+table_2$CHR_POS<-sapply(table_2$CHR_POS, function(x) as.numeric(as.character(x)))
+table_2$CHR_ID<-sapply(table_2$CHR_ID, as.character)
+table_2$SNPS<-sapply(table_2$SNPS, as.character)
+table_filtered_by_p_value <- table_2[table_2$P.VALUE<=0.00000005,]
+table_filtered_by_p_value<-table_filtered_by_p_value[(nchar(
+  table_filtered_by_p_value$CHR_ID)<=2) & 
+    #(table_filtered_by_p_value$CHR_ID!='X') & 
+    (table_filtered_by_p_value$CHR_ID!='')  ,]
+unique_rsIDS<-unique(table_filtered_by_p_value$SNPS)
+for (i in 1:length(unique_rsIDS))
+{
+  spots<-which(table_filtered_by_p_value$SNPS==unique_rsIDS[i])
+  smallest <- min(which(table_1$Human.Chr == table_filtered_by_p_value$CHR_ID[spots[1]])) - 1
+  positions1 <- table_filtered_by_p_value$CHR_POS[spots[1]]
+  regions1 <- 
+    table_1$Vertebrate.Ancestor[which(table_1$Final.Stop38[which(
+      table_1$Final.Start38[which(table_1$Human.Chr == table_filtered_by_p_value$CHR_ID[spots[1]])]
+      <=positions1)+smallest] >= positions1)+smallest]
+    write(cat(c(table_filtered_by_p_value$SNPS[spots[1]], 
+          (table_filtered_by_p_value$PVALUE_MLOG[spots[1]]),
+              table_filtered_by_p_value$CHR_POS[spots[1]],
+              as.character(regions1),
+              table_filtered_by_p_value$CHR_ID[spots[1]],
+                            '\n'       ), file = "GWAS_AncChr_Snps.csv", sep = ",", append = T))
+}

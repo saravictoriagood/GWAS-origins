@@ -1,0 +1,26 @@
+### Mapping the HapMap SNPs to the Merged genome
+table_1<-read.csv(file = "sacerdote_map_locations.csv", strip.white=TRUE, fill = TRUE, header = TRUE)
+table_2<-read.delim(file = "HapMapLift38_2_chr23.txt", sep = "\t", strip.white=TRUE, fill = TRUE, header = FALSE)
+names(table_2)<- c("chr", "start.38", "end.39", "rsID")
+table_1$Final.Start38<-sapply(table_1$Final.Start38, function(x) as.numeric(as.character(x)))
+table_1$Final.Stop38<-sapply(table_1$Final.Stop38, function(x) as.numeric(as.character(x)))
+table_2$start.38<-sapply(table_2$start.38, function(x) as.numeric(as.character(x)))
+table_2$chr<-sapply(table_2$chr, as.character)
+table_2$rsID<-sapply(table_2$rsID, as.character)
+unique_rsIDS<-unique(table_2$rsID)
+for (i in 1:length(unique_rsIDS))
+{
+  spots<-which(table_2$rsID==unique_rsIDS[i])
+  smallest <- min(which(table_1$Human.Chr == table_2$chr[spots[1]])) - 1
+  positions1 <- table_2$start.38[spots[1]]
+  regions1 <- 
+    table_1$Vertebrate.Ancestor[which(table_1$Final.Stop38[which(
+      table_1$Final.Start38[which(table_1$Human.Chr == table_2$chr[spots[1]])]
+      <=positions1)+smallest] >= positions1)+smallest]
+  
+  write(cat(c(table_2$rsID[spots[1]], 
+              (table_2$start.38[spots[1]]),
+              as.character(regions1),
+              table_2$chr[spots[1]],
+              '\n'       ), file = "plot_HapMap_Snps3.csv", sep = ",", append = T))
+}
